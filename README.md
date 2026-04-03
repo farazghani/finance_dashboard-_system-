@@ -1,278 +1,309 @@
 # Finance Data Processing and Access Control Backend
 
-### Overview
+This is a FastAPI backend for a finance dashboard system. I built it around a simple SQLite database, JWT based login, role based access control, and a small service layer so the code stays easy to follow.
 
-This project is a backend system for managing financial records and providing summary insights for a dashboard. It demonstrates backend design principles such as data modeling, API design, role-based access control, and aggregation logic.
+The project covers:
+- user creation, login, and active or inactive user state
+- financial record create, read, update, delete
+- record filtering by type, category, and date
+- dashboard summary data for a frontend
+- audit logging for important actions
+- route level RBAC for viewer, analyst, and admin
 
-The system allows users with different roles to interact with financial data securely and efficiently.
+## Architecture
 
-### features
+![Finance DB Architecture](docs/finance_db_architecture.svg)
 
-## User features
-user can 
-```
-sign in 
-sign out
-login
-logout
+## Roles
 
-```
+The system uses three roles:
 
-User can have three roles: 
+- `viewer`: can read dashboard summary and records
+- `analyst`: can read dashboard summary and records
+- `admin`: can manage users, manage records, and read audit logs
 
+## Access Rules
 
- viewer-> can only view dashboard data
- analyst -> can view records and access insights
- admin -> can create , update and manage records and users
+| Action | Viewer | Analyst | Admin |
+| --- | --- | --- | --- |
+| Login | ✅ | ✅ | ✅ |
+| View records | ✅ | ✅ | ✅ |
+| Filter records | ✅ | ✅ | ✅ |
+| View dashboard summary | ✅ | ✅ | ✅ |
+| Create record | ❌ | ❌ | ✅ |
+| Update record | ❌ | ❌ | ✅ |
+| Delete record | ❌ | ❌ | ✅ |
+| Create user | ❌ | ❌ | ✅ |
+| Update user | ❌ | ❌ | ✅ |
+| View audit logs | ❌ | ❌ | ✅ |
 
-## records features:
- should have following feature
- ```
- creating records
- viewing records
- updating records 
- deleting records
- filtering records based on criteria as date, category or type
+## Tech Stack
 
-```
+- FastAPI
+- Pydantic
+- SQLite
+- PyJWT
+- Passlib
+- Pytest
 
-## Access control logic
-```
-| Action        | Viewer | Analyst | Admin |
-| ------------- | ------ | ------- | ----- |
-| Create Record | ❌      | ❌       | ✅     |
-| View Records  | ✅      | ✅       | ✅     |
-| Update Record | ❌      | ❌       | ✅     |
-| Delete Record | ❌      | ❌       | ✅     |
-| View Summary  | ✅      | ✅       | ✅     |
-| Manage Users  | ❌      | ❌       | ✅     |
-```
+## Project Structure
 
-## dashboard features:
-should view following analytics:
-total income , total expense for a user,
-category wise expense
-date wise expense , income
-
-
-### TECH STACK
-# 1. Core Framework: FastAPI
-# 2. Data Validation: Pydantic v2
-# 3. Database: SQLite (Raw SQL)
-# 4. Security & Identity: PyJWT & Passlib
-
-### SYSTEM ARCHITECTURE (mental model)
-
-
-
-
-
-
-
-### PROJECT STRUCTURE
-
-```
-finance_backend/
+```text
+zorvyn/
+├── docs/
+│   └── finance_db_architecture.svg
 ├── src/
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── exceptions.py
-│   │   └── security.py (dependency injection for auth)
-│   ├── models/ (Pydantic)
-│   │   ├── user.py
-│   │   ├── transaction.py
-│   │   └── dashboard.py 
-|   ├── schemas
-          ├── userSchema.py
-          └──recordSchema.py
-│   ├── services/
-│   │   ├── user_service.py
-│   │   ├── finance_service.py
-│   │   └── dashboard_service.py
-│   ├── routes/
-│   │   ├── users.py
+│   ├── api/
+│   │   ├── audit.py
+│   │   ├── dashboard.py
 │   │   ├── records.py
-│   │   └── dashboard.py
+│   │   └── users.py
+│   ├── core/
+│   │   ├── exceptions.py
+│   │   └── security.py
 │   ├── db/
-│   │   ├── database.py
-│   │   └── migrations.sql
+│   │   ├── db.py
+│   │   ├── migration.py
+│   │   └── seed.py
+│   ├── models/
+│   │   ├── audit.py
+│   │   ├── common.py
+│   │   ├── dashboard.py
+│   │   ├── error.py
+│   │   ├── transaction.py
+│   │   └── user.py
+│   ├── services/
+│   │   ├── audit_service.py
+│   │   ├── dashboard_Services.py
+│   │   ├── finance_Services.py
+│   │   └── user_services.py
 │   └── main.py
 ├── tests/
-│   ├── test_access_control.py
-│   ├── test_finance_service.py
-│   └── test_dashboard.py
-├── README.md (with permission matrix)
-└── requirements.txt
-|
-└──tests/
-
+└── README.md
 ```
 
-### Data Modeling Architecture
+## Data Model
 
-## physical data model
+### Users
 
-# USER
+- `id`
+- `name`
+- `email`
+- `password`
+- `role`
+- `is_active`
+- `created_at`
 
-```
-USER(
-id
-name 
-email
-password(encrpyted)
-role
-createdAt
-)
-```
+### Records
 
-# RECORDS
-```
-RECORD(
-id
-userid
-amount > 0
-type (debit , credit)
-category ('salary' 'expense' 'food' 'Rent')
-date
-notes
-createdAt
-)
-```
-# AUDIT LOGS
-```
-audit_log(
-id
-user_id
-action
-target_id
-details
-created_at
-)
-```
-## Logical Data Model (Pydantic Schemas)
+- `id`
+- `user_id`
+- `amount`
+- `type`
+- `category`
+- `date`
+- `notes`
+- `created_at`
 
-# user schema hierarchy
+### Audit Logs
 
-UserBase: Contains common fields like email, name, and role.
+- `id`
+- `user_id`
+- `action`
+- `target_id`
+- `details`
+- `created_at`
 
-UserCreate: Extends UserBase to include a password field (Write-only).
+## API Summary
 
-UserResponse: Extends UserBase to include id and created_at. Crucial: It excludes the password hash to ensure security.
+### Auth and Users
 
-# Transaction Schema Hierarchy
+- `POST /users/login`
+- `POST /users`
+- `PATCH /users/{user_id}`
 
-RecordBase: Defines the shape of a financial entry (amount, category, type, date).
+### Records
 
-RecordCreate: Used for incoming POST requests. Includes validation logic (e.g., date must not be in the future).
+- `GET /records`
+- `POST /users/{user_id}/records`
+- `PATCH /records/{record_id}`
+- `DELETE /records/{record_id}`
 
-RecordResponse: Adds the system-generated id and the owner's user_id
+### Dashboard
 
-# Analytics & Dashboard Schemas
+- `GET /dashboard/summary`
 
-These are "Virtual Models" that do not map 1:1 to a single table but represent the output of complex SQL aggregations.
+### Audit Logs
 
-CategorySummary: Represents a grouped total (e.g., "Food: $500").
+- `GET /audit-logs`
 
-DashboardSummary: The master contract for the frontend, containing totals, net balance, and a list of recent activity.
+## Request Notes
 
-## RBAC logic implementation
+### Login
 
-mvp approach would be checking role.user == "Admin" on each protected endpoint was thinking to implement a middleware  
+`POST /users/login`
 
-but my approach here is to implement a Stateless RBAC architecture instead of querying the database for permissions on every request, the user's role is securely encoded into their JWT (JSON Web Token).
-
-
-# implementation layer
-
-
-# A. identity layer
-when user authenticates , the user_services fetches their role from the  database
-
-the role is then added to the JWT payload
-
-```
+```json
 {
-  "sub": "user_123",
-  "role": "analyst",
-  "exp": 1712150000
+  "email": "admin@zorvyn.dev",
+  "password": "admin123"
 }
-
 ```
 
-# B. Gateway Layer
+Response:
 
-use a custom  Rolechecker dependency to gate specific routes 
-
-
-## Security Considerations
-Immutability: Once a JWT is issued, the role cannot be changed by the client because any tampering would invalidate the cryptographic signature.
-
-
-Granularity: The RoleChecker allows for multiple roles to access the same resource (e.g., ["admin", "analyst"]), providing flexibility without code duplication.
-
-
-Fail-Safe: By default, all routes are protected. Access must be explicitly granted by attaching the dependency to the route.
-
-## Error Handling & Messaging Strategy
-The application implements a Centralized Exception Mapping pattern. This ensures that every error—whether it's a database constraint violation, a failed login, or a permission issue—returns a consistent, machine-readable JSON response.
-
-1. Global Exception Handler
-Instead of using try-except blocks inside every route, the system uses a Global Exception Handler in main.py. This middleware intercepts custom Python exceptions and converts them into standardized HTTP responses.
-
-```
+```json
 {
-  "status_code": 403,
-  "error_code": "INSUFFICIENT_PERMISSIONS",
-  "message": "You do not have the required 'admin' role to delete this record.",
-  "timestamp": "2026-04-03T02:20:00Z"
+  "access_token": "jwt-token",
+  "token_type": "bearer"
 }
-
-```
-2. Categorized Error
-following error categories are handled explicitly:Category
-
-```
-## ⚠️ Error Handling
-
-| Category         | HTTP Status              | Scenario                                                                  |
-| ---------------- | ------------------------ | ------------------------------------------------------------------------- |
-| Validation Error | 422 Unprocessable Entity | Pydantic catches invalid data formats (e.g., negative amounts, bad email) |
-| Authentication   | 401 Unauthorized         | Invalid or expired authentication token (e.g., JWT)                       |
-| Authorization    | 403 Forbidden            | User is authenticated but lacks required role/permission                  |
-| Resource Missing | 404 Not Found            | Requested resource (e.g., transaction ID) does not exist                  |
-| Conflict         | 409 Conflict             | Duplicate resource (e.g., email already registered)                       |
-
-
 ```
 
-### API
+### Create User
 
-The API follows RESTful principles, using standard HTTP methods and status codes. All requests and responses are encoded in application/json.
+`POST /users`
 
- Interactive Documentation
-Once the server is running, you can access the interactive OpenAPI (Swagger) documentation at:
+Requires admin token.
 
-Swagger UI: http://localhost:8000/docs
+```json
+{
+  "name": "Faraz",
+  "email": "faraz@example.com",
+  "password": "secret123",
+  "role": "admin",
+  "is_active": true
+}
+```
 
-ReDoc: http://localhost:8000/redoc
+### Create Record
 
-1. Authentication (/auth)
-Endpoints for identity management and session establishment.
+`POST /users/{user_id}/records`
 
-2. Financial Records (/records)
-Core CRUD operations for managing income and expenses. Requirement #2
+Requires admin token.
 
-3. Dashboard & Analytics (/dashboard)
-Aggregated data for high-level financial oversight. Requirement #3
+```json
+{
+  "amount": 125.5,
+  "type": "credit",
+  "category": "salary",
+  "date": "2026-04-04",
+  "notes": "monthly pay"
+}
+```
 
-4. Administrative Tools (/admin)
-User and system management. Requirement #4
+### Filter Records
 
-🛠 Request & Response Examples
-Example: Create a Record (POST /records)
-Request Body:
+`GET /records?type=credit&category=salary&date=2026-04-04`
 
-Successful Response (201 Created):
+Requires viewer, analyst, or admin token.
 
-Example: Unauthorized Access (403 Forbidden)
-If a Viewer attempts to DELETE a record, the system returns:
+### Dashboard Summary
+
+`GET /dashboard/summary`
+
+Current response includes:
+
+- total income
+- total expense
+- net balance
+- category breakdown
+- recent activity
+- monthly trends
+
+## Running The Project
+
+Install dependencies first, then run:
+
+```bash
+uvicorn src.main:app --reload
+```
+
+Docs:
+
+- [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
+
+## Seed Data
+
+I added a small seed script so the project is easy to demo locally.
+
+Run:
+
+```bash
+python3 -m src.db.seed
+```
+
+It creates:
+
+- 3 sample users
+- 4 sample records
+- 3 sample audit log entries
+
+Seed users:
+
+- `admin@zorvyn.dev / admin123`
+- `analyst@zorvyn.dev / analyst123`
+- `viewer@zorvyn.dev / viewer123`
+
+## Tests
+
+Run:
+
+```bash
+pytest -q
+```
+
+Current status in this repo:
+
+```text
+44 passed
+```
+
+## Validation and Error Handling
+
+I kept validation close to the models and service layer.
+
+- Pydantic handles request validation
+- custom exceptions return consistent JSON errors
+- auth errors return `401`
+- permission errors return `403`
+- missing data returns `404`
+- bad input or invalid operations return `400`
+
+## Tradeoffs
+
+### Why I used SQLite
+
+I used SQLite to keep setup simple and make the project easy to run for review. The tradeoff is that it is a good fit for a demo or assessment project, but not the database I would pick for a larger multi-user production system.
+
+### Why I used a service layer
+
+I put most logic in `services` so the route files stay small and easier to read. The tradeoff is a few extra files, but I think it makes the project easier to maintain.
+
+### Why I used JWT with route level role checks
+
+I used JWT so the API can identify the user on each request without keeping server side session state. I also used route dependencies for role checks because it keeps the permission rules visible in the endpoint definitions. The tradeoff is that role changes only apply to new tokens after the next login.
+
+### Why audit logs are internal only
+
+I removed the public create audit log API and only create audit logs from the service layer when important actions happen. I did this so clients cannot fake audit events. The tradeoff is less flexibility, but it keeps the audit trail more trustworthy.
+
+### Why I added `is_active`
+
+I added `is_active` because the assignment asked for active and inactive users, and it gives a simple way to block login without deleting accounts. The tradeoff is that there is still no separate user lifecycle flow yet, just a boolean flag managed by admin.
+
+### Why password hashing uses Passlib with `pbkdf2_sha256`
+
+I added password hashing so passwords are not stored in plain text. In this environment I used `pbkdf2_sha256` because the installed `bcrypt` backend was not working correctly. The tradeoff is that it differs from the original bcrypt plan, but it still gives proper password hashing and keeps the project working cleanly.
+
+## What Is Still Simple On Purpose
+
+This project is meant for assessment, so I kept some things intentionally small:
+
+- no refresh token flow
+- no password reset flow
+- no pagination yet
+- no soft delete flow
+- no separate admin UI
+
+The focus here is clean backend structure, correct role checks, and clear business logic.

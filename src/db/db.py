@@ -4,13 +4,13 @@ from typing import Generator
 from src.db.migration import create_tables
 
 def get_test_db():
-    conn = sqlite3.connect(":memory:")
+    conn = sqlite3.connect(":memory:", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     create_tables(conn)   # ✅ THIS WAS MISSING
     return conn
 
 def get_connection():
-    conn = sqlite3.connect("finance.db")
+    conn = sqlite3.connect("finance.db", check_same_thread=False)
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -27,4 +27,3 @@ def init_db():
     conn = get_connection()
     create_tables(conn)
     conn.close()
-

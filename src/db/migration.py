@@ -11,9 +11,21 @@ def create_tables(conn):
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL,
         role TEXT CHECK(role IN ('viewer','analyst','admin')) NOT NULL,
+        is_active INTEGER NOT NULL DEFAULT 1 CHECK(is_active IN (0, 1)),
         created_at TEXT NOT NULL
     )
     """)
+
+    cursor.execute("PRAGMA table_info(users)")
+    user_columns = {row[1] for row in cursor.fetchall()}
+    if "is_active" not in user_columns:
+        cursor.execute(
+            """
+            ALTER TABLE users
+            ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1
+            CHECK(is_active IN (0, 1))
+            """
+        )
 
     # 💰 RECORDS
     cursor.execute("""

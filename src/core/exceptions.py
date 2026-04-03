@@ -1,7 +1,8 @@
-from datetime import datetime
-from src.models.error import ErrorResponse
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from src.main import app
+
+from src.models.error import ErrorResponse
+
 
 class AppException(Exception):
     def __init__(self, status_code: int, error_code: str, message: str):
@@ -9,40 +10,51 @@ class AppException(Exception):
         self.error_code = error_code
         self.message = message
 
+
 class NotFoundException(AppException):
     def __init__(self, message="Resource not found"):
-        super().__init__( 
+        super().__init__(
             status_code=404,
-              error_code="NOT_FOUND",
-               
-                message=message )
-        
+            error_code="NOT_FOUND",
+            message=message,
+        )
+
 
 class ForbiddenException(AppException):
-    def __init__(self, message="Access denied"): 
+    def __init__(self, message="Access denied"):
         super().__init__(
-             status_code=403,
-               error_code="FORBIDDEN",
-                 message=message )
-        
+            status_code=403,
+            error_code="FORBIDDEN",
+            message=message,
+        )
+
 
 class BadRequestException(AppException):
-    def __init__(self, message="Bad request"): 
-        super().__init__( status_code=400,
-                          error_code="BAD_REQUEST",
-                            message=message )
+    def __init__(self, message="Bad request"):
+        super().__init__(
+            status_code=400,
+            error_code="BAD_REQUEST",
+            message=message,
+        )
 
 
-@app.exception_handler(AppException)
+class UnauthorizedException(AppException):
+    def __init__(self, message="Unauthorized"):
+        super().__init__(
+            status_code=401,
+            error_code="UNAUTHORIZED",
+            message=message,
+        )
+
+
 async def app_exception_handler(request, exc: AppException):
     error = ErrorResponse(
         status_code=exc.status_code,
         error_code=exc.error_code,
         message=exc.message,
-       
     )
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=error.dict()
-    )
-    
+    return JSONResponse(status_code=exc.status_code, content=error.model_dump())
+
+
+def register_exception_handlers(app: FastAPI):
+    app.add_exception_handler(AppException, app_exception_handler)

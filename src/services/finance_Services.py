@@ -1,8 +1,9 @@
 from uuid import uuid4
-from datetime import datetime
+from datetime import date as dt_date, datetime
 from src.models.transaction import RecordCreate , RecordResponse , RecordUpdate
 from src.core.exceptions import NotFoundException, BadRequestException
-
+from src.services.audit_service import create_audit_log
+from src.models.audit import AuditLogCreate
 
 def create_record(db, user_id: str, data: RecordCreate):
     try:
@@ -23,7 +24,17 @@ def create_record(db, user_id: str, data: RecordCreate):
                 datetime.utcnow().isoformat(),
             ),
         )
-        db.commit()
+
+        create_audit_log(
+            db,
+            AuditLogCreate(
+                user_id=user_id,
+                action="CREATE_RECORD",
+                target_id=record_id,
+                details=f"{data.type} of {data.amount}"
+            )
+        )   
+
         return {"id": record_id}
 
     except Exception as e:
@@ -31,7 +42,7 @@ def create_record(db, user_id: str, data: RecordCreate):
     
 
 
-def update_record(db, record_id: str, data: RecordUpdate) -> RecordResponse:
+def update_record(db, record_id: str, data: RecordUpdate , admin_user_id) -> RecordResponse:
     try:
         cursor = db.cursor()
 
@@ -80,6 +91,15 @@ def update_record(db, record_id: str, data: RecordUpdate) -> RecordResponse:
         cursor.execute("SELECT * FROM records WHERE id = ?", (record_id,))
         row = cursor.fetchone()
 
+        create_audit_log(
+            db,
+            AuditLogCreate(
+                user_id=admin_user_id,
+                action="UPDATE_RECORD",
+                target_id=record_id,
+                details=f"{data.type} of {data.amount}"
+            )
+        )  
         return RecordResponse(
             id=row["id"],
             user_id=row["user_id"],
@@ -87,7 +107,7 @@ def update_record(db, record_id: str, data: RecordUpdate) -> RecordResponse:
             type=row["type"],
             category=row["category"],
             date=row["date"],
-            notes=row.get("notes"),
+            notes=row["notes"],
         )
 
     except (BadRequestException, NotFoundException):
@@ -96,10 +116,34 @@ def update_record(db, record_id: str, data: RecordUpdate) -> RecordResponse:
     except Exception as e:
         raise BadRequestException(f"Failed to update record: {str(e)}")
 
-def get_records(db):
+def get_records(
+    db,
+    record_type: str | None = None,
+    category: str | None = None,
+    record_date: dt_date | None = None,
+):
     try:
         cursor = db.cursor()
-        cursor.execute("SELECT * FROM records")
+        query = "SELECT * FROM records"
+        filters = []
+        values = []
+
+        if record_type is not None:
+            filters.append("type = ?")
+            values.append(record_type)
+
+        if category is not None:
+            filters.append("category = ?")
+            values.append(category)
+
+        if record_date is not None:
+            filters.append("date = ?")
+            values.append(str(record_date))
+
+        if filters:
+            query += " WHERE " + " AND ".join(filters)
+
+        cursor.execute(query, tuple(values))
         rows = cursor.fetchall()
 
         return [dict(row) for row in rows]
@@ -110,7 +154,7 @@ def get_records(db):
 
 
 
-def delete_record(db, record_id: str):
+def delete_record(db, record_id: str , admin_user_id : str):
     try:
         cursor = db.cursor()
 
@@ -119,9 +163,16 @@ def delete_record(db, record_id: str):
 
         if cursor.rowcount == 0:
             raise NotFoundException("Record not found")
-
+        create_audit_log(
+                db,
+                AuditLogCreate(
+                    user_id=admin_user_id,
+                    action="DELETE_RECORD",
+                    target_id=record_id,
+                    details="Record deleted"
+                )
+        )
         return {"message": "deleted"}
-    
+
     except Exception as e:
         raise BadRequestException(f"Failed to fetch records: {str(e)}")
-
