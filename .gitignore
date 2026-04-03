@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+.venv/
+venv/
+
+# Database
+*.db
+*.sqlite3
+
+# Env files
+.env
+
+# Mac
+.DS_Store
+
+# Pytest cache
+.pytest_cache/

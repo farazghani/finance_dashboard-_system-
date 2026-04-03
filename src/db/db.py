@@ -5,6 +5,8 @@ from src.db.migration import create_tables
 
 def get_test_db():
     conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    create_tables(conn)   # ✅ THIS WAS MISSING
     return conn
 
 def get_connection():
